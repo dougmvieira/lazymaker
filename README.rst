@@ -14,7 +14,6 @@ Overview
         | |codecov|
     * - package
       - | |version| |wheel| |supported-versions| |supported-implementations|
-        | |commits-since|
 .. |docs| image:: https://readthedocs.org/projects/lazymaker/badge/?style=flat
     :target: https://readthedocs.org/projects/lazymaker
     :alt: Documentation Status
@@ -42,10 +41,6 @@ Overview
 .. |supported-implementations| image:: https://img.shields.io/pypi/implementation/lazymaker.svg
     :alt: Supported implementations
     :target: https://pypi.org/project/lazymaker
-
-.. |commits-since| image:: https://img.shields.io/github/commits-since/dougmvieira/lazymaker/v0.0.0.svg
-    :alt: Commits since latest release
-    :target: https://github.com/dougmvieira/lazymaker/compare/v0.0.0...master
 
 
 

@@ -1,6 +1,2 @@
-
-from lazymaker import main
-
-
-def test_main():
+def test():
     pass
