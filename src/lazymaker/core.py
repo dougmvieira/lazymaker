@@ -1,6 +1,5 @@
 import json
 import logging
-from functools import reduce
 from hashlib import sha1
 
 
@@ -44,26 +43,26 @@ def update_dependencies(cache, cache_filename, output_filename, output,
         json.dump(cache, f, indent=4)
 
 
-def persist_memoise(cache_filename, compute, args, read, address):
+def lazymake(cache_filename, name, compute, args, read):
     try:
         with open(cache_filename) as f:
             cache = json.load(f)
     except FileNotFoundError:
         cache = dict()
 
-    is_updated, input_hash = check_dependencies(cache, address, args)
+    is_updated, input_hash = check_dependencies(cache, name, args)
     is_read = False
     if is_updated:
         try:
-            output = read(address)
+            output = read(name)
             is_read = True
-        except:
-            logging.warning(f'Could not read {address}. Computing instead.')
+        except Exception:
+            logging.warning('Could not read {}. Computing instead.'
+                            ''.format(name))
 
     if not is_updated or not is_read:
         output = compute(*args)
-        update_dependencies(cache, cache_filename, address, output,
-                            input_hash)
+        update_dependencies(cache, cache_filename, name, output, input_hash)
 
     return output
 

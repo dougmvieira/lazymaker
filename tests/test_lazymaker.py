@@ -1,7 +1,7 @@
 import os
 from collections import namedtuple
 
-from lazymaker import persist_memoise, add_side_effects, add_dummy_args
+from lazymaker import lazymake, add_side_effects, add_dummy_args
 
 
 def test():
@@ -13,18 +13,18 @@ def test():
         counters[i] += 1
         return counters[i]
 
-    def persist(output, filename):
-        mock_persist[filename] = output
+    def persist(output, name):
+        mock_persist[name] = output
 
     try:
         os.remove(cache_filename)
     except FileNotFoundError:
         pass
 
-    def memo(filename, compute, *args):
-        compute = add_side_effects(compute, lambda o: persist(o, filename))
-        return persist_memoise(cache_filename, compute, args,
-                               mock_persist.__getitem__, filename)
+    def memo(name, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, name))
+        return lazymake(cache_filename, name, compute, args,
+                        mock_persist.__getitem__)
 
     counter0 = evals_count(0)
     assert counter0 == counters[0] == 1
@@ -64,19 +64,19 @@ def test_dummy():
         counter[0] += 1
         return counter[0]
 
-    def persist(output, filename):
-        mock_persist[filename] = output
+    def persist(output, name):
+        mock_persist[name] = output
 
     try:
         os.remove(cache_filename)
     except FileNotFoundError:
         pass
 
-    def memo(filename, compute, *args):
-        compute = add_side_effects(compute, lambda o: persist(o, filename))
+    def memo(name, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, name))
         compute = add_dummy_args(compute, 1)
-        return persist_memoise(cache_filename, compute, args, mock_persist.get,
-                               filename)
+        return lazymake(cache_filename, name, compute, args,
+                        mock_persist.__getitem__)
 
     memoed = memo('counter', evals_count, 'foo')
     assert memoed == counter[0] == 1
@@ -101,19 +101,19 @@ def test_custom_lazymaker_hash():
         counter[0] += 1
         return CustomType(counter[0], counter[0])
 
-    def persist(output, filename):
-        mock_persist[filename] = output
+    def persist(output, name):
+        mock_persist[name] = output
 
     try:
         os.remove(cache_filename)
     except FileNotFoundError:
         pass
 
-    def memo(filename, compute, *args):
-        compute = add_side_effects(compute, lambda o: persist(o, filename))
+    def memo(name, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, name))
         compute = add_dummy_args(compute, 1)
-        return persist_memoise(cache_filename, compute, args, mock_persist.get,
-                               filename)
+        return lazymake(cache_filename, name, compute, args,
+                        mock_persist.__getitem__)
 
     memoed = memo('counter', evals_count, CustomType('foo', 123))
     assert memoed.count == counter[0] == 1
