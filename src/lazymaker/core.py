@@ -1,4 +1,5 @@
 import json
+import logging
 from functools import reduce
 from hashlib import sha1
 
@@ -16,11 +17,12 @@ def hash_singleton(obj):
 
 def hash_tuple(objs):
     h = sha1()
-    reduce(lambda _, x: h.update(x), map(make_hashable, objs))
+    for obj in objs:
+        h.update(make_hashable(obj))
     return h.hexdigest()
 
 
-def check_dependencies(cache, filename, *args):
+def check_dependencies(cache, filename, args):
     input_hash = hash_tuple(args)
     try:
         _, cached_input_hash = cache[filename]
@@ -38,30 +40,40 @@ def update_dependencies(cache, cache_filename, output_filename, output,
         json.dump(cache, f, indent=4)
 
 
-def persist_memoise(cache_filename, read, persist=None):
+def persist_memoise(cache_filename, compute, args, read, address):
     try:
         with open(cache_filename) as f:
             cache = json.load(f)
     except FileNotFoundError:
         cache = dict()
 
-    if persist is None:
-        def persist(output, filename):
-            pass
+    is_updated, input_hash = check_dependencies(cache, address, args)
+    is_read = False
+    if is_updated:
+        try:
+            output = read(address)
+            is_read = True
+        except:
+            logging.warning(f'Could not read {address}. Computing instead.')
 
-    def closure(filename, compute, *args):
-        if compute is None:
-            def compute(*args):
-                return read(filename)
+    if not is_updated or not is_read:
+        output = compute(*args)
+        update_dependencies(cache, cache_filename, address, output,
+                            input_hash)
 
-        is_updated, input_hash = check_dependencies(
-            cache, filename, *args)
-        if is_updated:
-            output = read(filename)
-        else:
-            output = compute(*args)
-            persist(output, filename)
-            update_dependencies(cache, cache_filename, filename, output,
-                                input_hash)
+    return output
+
+
+def add_side_effects(compute, side_effects):
+    def closure(*args, **kwargs):
+        output = compute(*args, **kwargs)
+        side_effects(output)
         return output
+
+    return closure
+
+
+def add_dummy_args(compute, n):
+    def closure(*args):
+        return compute(*args[:-n])
     return closure

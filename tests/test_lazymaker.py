@@ -1,6 +1,6 @@
 import os
 
-from lazymaker import persist_memoise
+from lazymaker import persist_memoise, add_side_effects, add_dummy_args
 
 
 def test():
@@ -20,7 +20,10 @@ def test():
     except FileNotFoundError:
         pass
 
-    memo = persist_memoise(cache_filename, mock_persist.get, persist)
+    def memo(filename, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, filename))
+        return persist_memoise(cache_filename, compute, args,
+                               mock_persist.__getitem__, filename)
 
     counter0 = evals_count(0)
     assert counter0 == counters[0] == 1
@@ -43,5 +46,44 @@ def test():
     assert counter0 == counters[0] == 2
     assert counter1 == counters[1] == 1
     assert sum_counters == sum(counters)
+
+    del mock_persist['counter0']
+    counter0 = memo('counter0', evals_count, 0)
+    assert counter0 == counters[0] == 3
+
+    os.remove(cache_filename)
+
+
+def test_dummy():
+    cache_filename = 'cache.json'
+    counter = [0]
+    mock_persist = dict()
+
+    def evals_count():
+        counter[0] += 1
+        return counter[0]
+
+    def persist(output, filename):
+        mock_persist[filename] = output
+
+    try:
+        os.remove(cache_filename)
+    except FileNotFoundError:
+        pass
+
+    def memo(filename, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, filename))
+        compute = add_dummy_args(compute, 1)
+        return persist_memoise(cache_filename, compute, args, mock_persist.get,
+                               filename)
+
+    memoed = memo('counter', evals_count, 'foo')
+    assert memoed == counter[0] == 1
+
+    memoed = memo('counter', evals_count, 'foo')
+    assert memoed == counter[0] == 1
+
+    memoed = memo('counter', evals_count, 'bar')
+    assert memoed == counter[0] == 2
 
     os.remove(cache_filename)
