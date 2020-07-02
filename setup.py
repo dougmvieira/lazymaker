@@ -68,7 +68,6 @@ setup(
     ],
     python_requires='>=3.5',
     install_requires=[
-        'dask[delayed]',
     ],
     extras_require={
         # eg:
