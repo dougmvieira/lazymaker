@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 
 from lazymaker import persist_memoise, add_side_effects, add_dummy_args
 
@@ -85,5 +86,42 @@ def test_dummy():
 
     memoed = memo('counter', evals_count, 'bar')
     assert memoed == counter[0] == 2
+
+    os.remove(cache_filename)
+
+
+def test_custom_lazymaker_hash():
+    cache_filename = 'cache.json'
+    counter = [0]
+    mock_persist = dict()
+
+    CustomType = namedtuple('CustomType', ('count', 'lazymaker_hash',))
+
+    def evals_count():
+        counter[0] += 1
+        return CustomType(counter[0], counter[0])
+
+    def persist(output, filename):
+        mock_persist[filename] = output
+
+    try:
+        os.remove(cache_filename)
+    except FileNotFoundError:
+        pass
+
+    def memo(filename, compute, *args):
+        compute = add_side_effects(compute, lambda o: persist(o, filename))
+        compute = add_dummy_args(compute, 1)
+        return persist_memoise(cache_filename, compute, args, mock_persist.get,
+                               filename)
+
+    memoed = memo('counter', evals_count, CustomType('foo', 123))
+    assert memoed.count == counter[0] == 1
+
+    memoed = memo('counter', evals_count, CustomType('bar', 123))
+    assert memoed.count == counter[0] == 1
+
+    memoed = memo('counter', evals_count, CustomType('foo', 456))
+    assert memoed.count == counter[0] == 2
 
     os.remove(cache_filename)

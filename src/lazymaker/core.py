@@ -12,12 +12,16 @@ def make_hashable(obj):
 
 
 def hash_singleton(obj):
+    if hasattr(obj, 'lazymaker_hash'):
+        obj = obj.lazymaker_hash
     return sha1(make_hashable(obj)).hexdigest()
 
 
 def hash_tuple(objs):
     h = sha1()
     for obj in objs:
+        if hasattr(obj, 'lazymaker_hash'):
+            obj = obj.lazymaker_hash
         h.update(make_hashable(obj))
     return h.hexdigest()
 
