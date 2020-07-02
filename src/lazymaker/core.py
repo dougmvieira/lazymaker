@@ -10,12 +10,6 @@ def make_hashable(obj):
         return bytes(obj)
 
 
-def hash_singleton(obj):
-    if hasattr(obj, 'lazymaker_hash'):
-        obj = obj.lazymaker_hash
-    return sha1(make_hashable(obj)).hexdigest()
-
-
 def hash_tuple(objs):
     h = sha1()
     for obj in objs:
@@ -26,19 +20,17 @@ def hash_tuple(objs):
 
 
 def check_dependencies(cache, filename, args):
-    input_hash = hash_tuple(args)
+    args_hash = hash_tuple(args)
     try:
-        _, cached_input_hash = cache[filename]
-        is_updated = input_hash == cached_input_hash
+        cached_args_hash = cache[filename]
+        is_updated = args_hash == cached_args_hash
     except KeyError:
         is_updated = False
-    return is_updated, input_hash
+    return is_updated, args_hash
 
 
-def update_dependencies(cache, cache_filename, output_filename, output,
-                        input_hash):
-    output_hash = hash_singleton(output)
-    cache[output_filename] = [output_hash, input_hash]
+def update_dependencies(cache, cache_filename, name, args_hash):
+    cache[name] = args_hash
     with open(cache_filename, 'w') as f:
         json.dump(cache, f, indent=4)
 
@@ -50,7 +42,7 @@ def lazymake(cache_filename, name, compute, args, read):
     except FileNotFoundError:
         cache = dict()
 
-    is_updated, input_hash = check_dependencies(cache, name, args)
+    is_updated, args_hash = check_dependencies(cache, name, args)
     is_read = False
     if is_updated:
         try:
@@ -62,7 +54,7 @@ def lazymake(cache_filename, name, compute, args, read):
 
     if not is_updated or not is_read:
         output = compute(*args)
-        update_dependencies(cache, cache_filename, name, output, input_hash)
+        update_dependencies(cache, cache_filename, name, args_hash)
 
     return output
 
